@@ -1,0 +1,220 @@
+[gd_scene load_steps=14 format=2]
+
+[ext_resource path="res://Re-Volt Editor.gd" type="Script" id=1]
+[ext_resource path="res://Camera Navigator.gd" type="Script" id=2]
+[ext_resource path="res://Open File Panel.gd" type="Script" id=3]
+[ext_resource path="res://File Menu Button.gd" type="Script" id=4]
+[ext_resource path="res://View Button.gd" type="Script" id=5]
+[ext_resource path="res://Open Track Folder Dialog.gd" type="Script" id=6]
+[ext_resource path="res://Tool Panel.gd" type="Script" id=7]
+[ext_resource path="res://Handle.shader" type="Shader" id=8]
+[ext_resource path="res://Origin.gd" type="Script" id=9]
+
+[sub_resource type="StreamTexture" id=1]
+flags = 4
+load_path = "res://.import/tool icons small.png-cb977479b9c9f0208cc51ee49f8d9d61.stex"
+
+[sub_resource type="AtlasTexture" id=2]
+flags = 4
+atlas = SubResource( 1 )
+region = Rect2( 0, 0, 32, 32 )
+
+[sub_resource type="AtlasTexture" id=3]
+flags = 4
+atlas = SubResource( 1 )
+region = Rect2( 0, 64, 32, 32 )
+
+[sub_resource type="ShaderMaterial" id=4]
+shader = ExtResource( 8 )
+shader_param/color = Plane( 1, 1, 1, 1 )
+shader_param/fade = 1.0
+shader_param/offset = 0.0
+shader_param/limit = 0.0
+
+[node name="Re-Volt Editor" type="Spatial"]
+script = ExtResource( 1 )
+
+[node name="Camera" type="Camera" parent="."]
+transform = Transform( 1, 0, 0, 0, 1, 0, 0, 0, 1, 0, 0, 7 )
+far = 1000.0
+script = ExtResource( 2 )
+
+[node name="UI" type="Control" parent="Camera"]
+anchor_right = 1.0
+anchor_bottom = 1.0
+mouse_filter = 2
+
+[node name="Darkener" type="ColorRect" parent="Camera/UI"]
+visible = false
+anchor_right = 1.0
+anchor_bottom = 1.0
+color = Color( 0, 0, 0, 0.25098 )
+
+[node name="Speed Control" type="Control" parent="Camera/UI"]
+anchor_top = 0.5
+anchor_bottom = 0.5
+margin_left = 8.0
+margin_top = -100.0
+margin_right = 56.0
+margin_bottom = 100.0
+
+[node name="Speed Display" type="Label" parent="Camera/UI/Speed Control"]
+anchor_right = 1.0
+margin_bottom = 24.0
+grow_horizontal = 2
+text = "1.00x"
+align = 1
+valign = 1
+
+[node name="Speed Slider" type="VSlider" parent="Camera/UI/Speed Control"]
+anchor_right = 1.0
+anchor_bottom = 1.0
+margin_top = 24.0
+min_value = -2.0
+max_value = 7.0
+step = 0.0
+tick_count = 10
+ticks_on_borders = true
+
+[node name="Open Track Window" type="WindowDialog" parent="Camera/UI"]
+editor/display_folded = true
+anchor_left = 0.5
+anchor_top = 0.5
+anchor_right = 0.5
+anchor_bottom = 0.5
+margin_left = -150.0
+margin_top = -100.0
+margin_right = 150.0
+margin_bottom = 50.0
+window_title = "Select Track Folder"
+script = ExtResource( 3 )
+
+[node name="Path Input" type="LineEdit" parent="Camera/UI/Open Track Window"]
+anchor_right = 1.0
+margin_left = 12.0
+margin_top = 12.0
+margin_right = -12.0
+margin_bottom = 44.0
+text = "D:\\Udder Games\\ReVolt\\levels\\countryspeed"
+placeholder_text = "Path to Track Folder"
+
+[node name="Open Button" type="Button" parent="Camera/UI/Open Track Window"]
+anchor_left = 0.5
+anchor_top = 1.0
+anchor_right = 0.5
+anchor_bottom = 1.0
+margin_left = -100.0
+margin_top = -49.0
+margin_right = 100.0
+margin_bottom = -14.0
+text = "Open"
+
+[node name="Warning Message" type="Label" parent="Camera/UI/Open Track Window"]
+anchor_left = 0.5
+anchor_right = 0.5
+margin_left = -100.0
+margin_top = 57.904
+margin_right = 100.5
+margin_bottom = 89.904
+text = "This is not a valid track folder"
+align = 1
+valign = 1
+
+[node name="Track Name" type="Label" parent="Camera/UI/Open Track Window"]
+margin_left = 13.0
+margin_top = 62.0
+margin_right = 151.0
+margin_bottom = 86.0
+text = "[ Track Name ]"
+valign = 1
+
+[node name="Menu Bar" type="Panel" parent="Camera/UI"]
+editor/display_folded = true
+anchor_right = 1.0
+margin_bottom = 36.0
+
+[node name="HBoxContainer" type="HBoxContainer" parent="Camera/UI/Menu Bar"]
+anchor_right = 1.0
+anchor_bottom = 1.0
+margin_left = 8.0
+margin_top = 8.0
+margin_right = -8.0
+margin_bottom = -8.0
+
+[node name="Track File Button" type="MenuButton" parent="Camera/UI/Menu Bar/HBoxContainer"]
+margin_right = 45.0
+margin_bottom = 20.0
+text = "Track"
+switch_on_hover = true
+script = ExtResource( 4 )
+open_track_window_path = NodePath("../../../FileDialog")
+
+[node name="View Button" type="MenuButton" parent="Camera/UI/Menu Bar/HBoxContainer"]
+margin_left = 49.0
+margin_right = 91.0
+margin_bottom = 20.0
+text = "View"
+switch_on_hover = true
+script = ExtResource( 5 )
+
+[node name="FileDialog" type="FileDialog" parent="Camera/UI"]
+anchor_left = 0.5
+anchor_top = 0.5
+anchor_right = 0.5
+anchor_bottom = 0.5
+margin_left = -294.896
+margin_top = -188.606
+margin_right = 305.104
+margin_bottom = 211.394
+popup_exclusive = true
+window_title = "Open a Directory"
+resizable = true
+mode = 2
+access = 2
+current_dir = "D:/Udder Games/ReVolt/levels"
+current_file = "countryspeed"
+current_path = "D:/Udder Games/ReVolt/levels/countryspeed"
+script = ExtResource( 6 )
+
+[node name="PanelContainer" type="PanelContainer" parent="Camera/UI"]
+editor/display_folded = true
+anchor_left = 0.497
+anchor_top = 1.0
+anchor_right = 0.497
+anchor_bottom = 1.0
+margin_left = -55.0
+margin_top = -66.0
+margin_right = 55.0
+margin_bottom = -8.0
+
+[node name="HBoxContainer" type="HBoxContainer" parent="Camera/UI/PanelContainer"]
+margin_left = 7.0
+margin_top = 7.0
+margin_right = 147.0
+margin_bottom = 51.0
+alignment = 1
+script = ExtResource( 7 )
+
+[node name="Pos Tool" type="ToolButton" parent="Camera/UI/PanelContainer/HBoxContainer"]
+margin_right = 44.0
+margin_bottom = 44.0
+icon = SubResource( 2 )
+
+[node name="AI Tool" type="ToolButton" parent="Camera/UI/PanelContainer/HBoxContainer"]
+margin_left = 48.0
+margin_right = 92.0
+margin_bottom = 44.0
+icon = SubResource( 2 )
+
+[node name="Track Zone Tool" type="ToolButton" parent="Camera/UI/PanelContainer/HBoxContainer"]
+margin_left = 96.0
+margin_right = 140.0
+margin_bottom = 44.0
+icon = SubResource( 3 )
+
+[node name="Origin Axis" type="ImmediateGeometry" parent="."]
+material_override = SubResource( 4 )
+script = ExtResource( 9 )
+[connection signal="value_changed" from="Camera/UI/Speed Control/Speed Slider" to="Camera" method="_on_speed_slider_value_changed"]
+[connection signal="text_changed" from="Camera/UI/Open Track Window/Path Input" to="Camera/UI/Open Track Window" method="_on_Path_Input_text_changed"]
+[connection signal="pressed" from="Camera/UI/Open Track Window/Open Button" to="Camera/UI/Open Track Window" method="_on_Open_Button_pressed"]
