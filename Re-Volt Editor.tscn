@@ -1,14 +1,14 @@
 [gd_scene load_steps=14 format=2]
 
-[ext_resource path="res://Re-Volt Editor.gd" type="Script" id=1]
-[ext_resource path="res://Camera Navigator.gd" type="Script" id=2]
-[ext_resource path="res://Open File Panel.gd" type="Script" id=3]
-[ext_resource path="res://File Menu Button.gd" type="Script" id=4]
-[ext_resource path="res://View Button.gd" type="Script" id=5]
-[ext_resource path="res://Open Track Folder Dialog.gd" type="Script" id=6]
-[ext_resource path="res://Tool Panel.gd" type="Script" id=7]
+[ext_resource path="res://Scripts/Editor/Re-Volt Editor.gd" type="Script" id=1]
+[ext_resource path="res://Scripts/Editor/Camera Navigator.gd" type="Script" id=2]
+[ext_resource path="res://Scripts/Editor/Open File Panel.gd" type="Script" id=3]
+[ext_resource path="res://Scripts/Editor/File Menu Button.gd" type="Script" id=4]
+[ext_resource path="res://Scripts/Editor/View Button.gd" type="Script" id=5]
+[ext_resource path="res://Scripts/Editor/Open Track Folder Dialog.gd" type="Script" id=6]
+[ext_resource path="res://Scripts/Editor/Tool Panel.gd" type="Script" id=7]
 [ext_resource path="res://Handle.shader" type="Shader" id=8]
-[ext_resource path="res://Origin.gd" type="Script" id=9]
+[ext_resource path="res://Scripts/Editor/Origin.gd" type="Script" id=9]
 
 [sub_resource type="StreamTexture" id=1]
 flags = 4
