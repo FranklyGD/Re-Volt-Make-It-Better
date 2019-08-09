@@ -177,7 +177,9 @@ func set_editable(value):
 
 enum {
 	SIDE_LEFT,
-	SIDE_RIGHT
+	SIDE_RIGHT,
+	SIDE_RACING,
+	SIDE_OVERTAKING
 }
 
 var closest_index = {"segment": -1, "side": SIDE_LEFT}
@@ -314,21 +316,27 @@ func _process(delta):
 
 func _unhandled_input(event):
 	if event is InputEventMouseMotion: # Mouse Move
-		if Input.is_key_pressed(KEY_CONTROL):
+		if event.control:
 			process_control()
 		else:
 			get_closest()
 			process_handle()
 			
-		if preselected_index.segment != -1 and event.button_mask & (BUTTON_LEFT | BUTTON_RIGHT):
+		if preselected_index.segment != -1:
 			var segment = segments[preselected_index.segment]
-			var node = segment.left if preselected_index.side == SIDE_LEFT else segment.right
-			node.position = owner.cursor_3d.transform.origin
+			if preselected_index.side == SIDE_RACING:
+				segment.racing_line = clamp(MathTools.nearest_point_on_segment(segment.left.position, segment.right.position, owner.cursor_3d.transform.origin), 0.001, 0.999)
+			elif preselected_index.side == SIDE_OVERTAKING:
+				segment.overtaking_line = clamp(MathTools.nearest_point_on_segment(segment.left.position, segment.right.position, owner.cursor_3d.transform.origin), 0.001, 0.999)
+			else:
+				if event.button_mask & (BUTTON_LEFT | BUTTON_RIGHT):
+					var node = segment.left if preselected_index.side == SIDE_LEFT else segment.right
+					node.position = owner.cursor_3d.transform.origin
 		
 	if event is InputEventMouseButton: # Mouse Buttons
 		if event.button_index == BUTTON_LEFT:
 			if event.pressed:
-				if Input.is_key_pressed(KEY_CONTROL): # Create a new node at 3D mouse position
+				if event.control: # Create a new node at 3D mouse position
 					closest_index.segment = segments.size() 
 					if closest_split.segment != -1:
 						closest_index.side = closest_split.side
@@ -347,7 +355,7 @@ func _unhandled_input(event):
 
 		if event.button_index == BUTTON_RIGHT:
 			if event.pressed:
-				if Input.is_key_pressed(KEY_CONTROL):
+				if event.control:
 					closest_index.segment = segments.size() 
 					closest_index.side = SIDE_RIGHT
 					add_segment(owner.cursor_3d.transform.origin)
@@ -359,7 +367,7 @@ func _unhandled_input(event):
 				if selected_index.segment != -1 and get_segment_unpressed():
 					change_link(selected_index.segment, preselected_index.segment)
 				
-				if get_side_unpressed():
+				if (event.alt or event.control) and get_side_unpressed():
 					select_node(preselected_index.segment, preselected_index.side)
 				preselected_index.segment = -1
 
@@ -372,6 +380,10 @@ func _unhandled_input(event):
 				closest_split.segment = -1
 				get_closest()
 				process_handle()
+
+		if event.scancode == KEY_ALT:
+			get_closest()
+			process_handle()
 
 		if event.scancode == KEY_DELETE: # Node deletion
 			if event.pressed:
@@ -421,18 +433,28 @@ func get_closest():
 				closest_distance = distance
 				closest.segment = segment_index
 				closest.side = node_side
+	
+	if selected_index.segment != -1:
+		var selected_segment = segments[selected_index.segment]
+		var position = lerp(selected_segment.left.position, selected_segment.right.position, selected_segment.overtaking_line if Input.is_key_pressed(KEY_ALT) else selected_segment.racing_line)
+
+		var distance = cursor_position.distance_to(position)
+		if distance < closest_distance:
+			closest_distance = distance
+			closest.segment = selected_index.segment
+			closest.side = SIDE_OVERTAKING if Input.is_key_pressed(KEY_ALT) else SIDE_RACING
 				
 	is_over = closest_distance < 0.5
 	closest_index = closest
 
 func get_closest_split():
 	var cursor_position = owner.cursor_3d.transform.origin
+	var closest = {"segment": -1, "link": -1, "t": 0.5, "side": SIDE_LEFT, "position": Vector3.ZERO}
 	var selected_segment = self.selected_segment
-	var closest = {"segment": selected_index.segment if selected_index.segment != -1 and selected_segment.links.size() > 0 else -1, "link": -1, "t": 0.5, "side": SIDE_LEFT, "position": Vector3.ZERO}
 	if not is_instance_valid(selected_segment):
 		is_over = false
 		return closest
-		
+
 	var closest_distance = 1 # Max range
 
 	# Next Links
@@ -446,6 +468,7 @@ func get_closest_split():
 		var distance = cursor_position.distance_to(position)
 		if distance < closest_distance:
 			closest_distance = distance
+			closest.segment = selected_index.segment
 			closest.link = i
 			closest.t = t
 			closest.side = SIDE_LEFT
@@ -457,6 +480,7 @@ func get_closest_split():
 		distance = cursor_position.distance_to(position)
 		if distance < closest_distance:
 			closest_distance = distance
+			closest.segment = selected_index.segment
 			closest.link = i
 			closest.t = t
 			closest.side = SIDE_RIGHT
@@ -525,17 +549,26 @@ func process_highlight():
 func process_handle():
 	if closest_index.segment != -1 and closest_index.side != -1:
 		var segment = segments[closest_index.segment]
-		var node = segment.left if closest_index.side == SIDE_LEFT else segment.right
+		var position
+		match closest_index.side:
+			SIDE_LEFT:
+				position = segment.left.position
+			SIDE_RIGHT:
+				position = segment.right.position
+			SIDE_RACING:
+				position = lerp(segment.left.position, segment.right.position, segment.racing_line)
+			SIDE_OVERTAKING:
+				position = lerp(segment.left.position, segment.right.position, segment.overtaking_line)
 	
 		var from = owner.camera.transform.origin
-		var to = from + (node.position - from) * 1.1
+		var to = from + (position - from) * 1.1
 		
 		var result = owner.world_space.intersect_ray(from, to, owner.trackZoneData.zones if owner.trackZoneData else [])
 		
 		surface_handle.transform.basis.y = result.get("normal", Vector3.UP)
 		surface_handle.transform.basis.z = Vector3.RIGHT.cross(surface_handle.transform.basis.y).normalized()
 		surface_handle.transform.basis.x = surface_handle.transform.basis.z.cross(surface_handle.transform.basis.y).normalized()
-		surface_handle.transform.origin = result.get("position", node.position) + result.get("normal", Vector3.UP) * 0.001
+		surface_handle.transform.origin = result.get("position", position) + result.get("normal", Vector3.UP) * 0.001
 		surface_handle.visible = true
 	else:
 		surface_handle.visible = false

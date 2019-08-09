@@ -7,7 +7,7 @@ var save_only_options = PopupMenu.new()
 
 onready var options = [
 	["Open Track Folder...", funcref(self, "open_file_menu")],
-	["Save [Not Implemented]", funcref(self, "save_track")]
+	["Save All", funcref(self, "save_track")]
 ]
 
 onready var save_options = [

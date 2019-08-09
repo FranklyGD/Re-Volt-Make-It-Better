@@ -18,6 +18,8 @@ var positionData : Position
 var aiData : AI
 var trackZoneData : TrackZone
 
+#var undo = UndoRedo.new()
+
 onready var world_space = get_world().direct_space_state
 
 onready var camera = $Camera
@@ -60,7 +62,6 @@ func load_track(folder_path: String):
 		return
 	
 	OS.set_window_title("Revolt Track Editor: %s" % data_name) 
-	
 	
 	# Clear area if the file is valid
 	if is_instance_valid(trackWorldData):
@@ -111,4 +112,4 @@ func save_ai():
 	save_data(aiData, AI_EXTENSION)
 
 func save_tz():
-	save_data(trackZoneData, TRACK_ZONE_EXTENSION)
+	pass#save_data(trackZoneData, TRACK_ZONE_EXTENSION)

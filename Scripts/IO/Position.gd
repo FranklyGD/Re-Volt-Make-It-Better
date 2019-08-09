@@ -102,6 +102,8 @@ var selected_node : PositionNode setget , get_selected_node
 func get_selected_node():
 	return null if selected_node_index == -1 else nodes[selected_node_index]
 
+var closest_split = {"node": -1, "link": -1, "t": 0.5, "position": Vector3.ZERO}
+
 var surface_handle = SurfaceHandle.new()
 
 func _init(file_path: String):
@@ -154,6 +156,30 @@ func _process(delta):
 	imgeo.end()
 	imgeo_dashed.end()
 
+	imgeo_dashed.begin(Mesh.PRIMITIVE_TRIANGLES)
+
+	var view_pos = owner.camera.transform.origin
+
+	if editable and selected_node_index != -1:
+		var node = nodes[selected_node_index]
+		imgeo_dashed.set_color(Color.yellow)
+
+		var t = float(OS.get_ticks_msec()) / 250
+		DrawingTools.arrow(imgeo_dashed, node.position + Vector3.UP * (sin(t) / 2 + 0.5), Vector3.DOWN, node.position - view_pos)
+		DrawingTools.arrow(imgeo_dashed, node.position + Vector3.DOWN * (sin(t) / 2 + 0.5), Vector3.UP, node.position - view_pos)
+
+	imgeo_dashed.set_color(Color.white)
+	# Draw arrows to distiguish direction
+	for i in range(nodes.size()):
+		var node = nodes[i]
+		for link in node.links:
+			var other_node = nodes[link]
+			
+			var pos = lerp(node.position, other_node.position, 0.5)
+			DrawingTools.arrow(imgeo_dashed, pos, other_node.position - node.position, pos - view_pos, 0.5)
+				
+	imgeo_dashed.end()
+
 	imgeo.begin(Mesh.PRIMITIVE_POINTS)
 
 	for node_index in range(nodes.size()):
@@ -166,8 +192,8 @@ func _process(delta):
 
 func _unhandled_input(event):
 	if event is InputEventMouseMotion: # Mouse Move
-		if Input.is_key_pressed(KEY_CONTROL):
-			surface_handle.transform.origin = owner.cursor_3d.transform.origin
+		if event.control:
+			process_control()
 		else:
 			get_closest()
 			process_handle()
@@ -178,9 +204,12 @@ func _unhandled_input(event):
 	if event is InputEventMouseButton: # Mouse Buttons
 		if event.button_index == BUTTON_LEFT:
 			if event.pressed:
-				if Input.is_key_pressed(KEY_CONTROL): # Create a new node at 3D mouse position
+				if event.control: # Create a new node at 3D mouse position
 					preselected_node_index = nodes.size()
-					add_node(owner.cursor_3d.transform.origin)
+					if closest_split.node != -1:
+						insert_node(closest_split.node, closest_split.link, closest_split.t)
+					else:
+						add_node(owner.cursor_3d.transform.origin)
 				else:
 					if is_over:
 						preselected_node_index = closest_node_index
@@ -191,7 +220,7 @@ func _unhandled_input(event):
 
 		if event.button_index == BUTTON_RIGHT:
 			if event.pressed:
-				if Input.is_key_pressed(KEY_CONTROL):
+				if event.control:
 					closest_node_index = nodes.size()
 					add_node(owner.cursor_3d.transform.origin)
 				
@@ -199,10 +228,10 @@ func _unhandled_input(event):
 				if preselected_node_index != -1:
 					get_tree().set_input_as_handled()
 			else:
-				if selected_node_index != -1 and preselected_node_index == closest_node_index:
+				if selected_node_index != -1 and preselected_node_index != -1 and preselected_node_index == closest_node_index:
 					change_link(selected_node_index, closest_node_index)
 				
-				if preselected_node_index == closest_node_index:
+				if (event.alt or event.control) and preselected_node_index != -1 and preselected_node_index == closest_node_index:
 					select_node(preselected_node_index)
 				preselected_node_index = -1
 
@@ -210,10 +239,9 @@ func _unhandled_input(event):
 		if event.scancode == KEY_CONTROL: # Hold for creation
 			if event.pressed:
 				surface_handle.visible = true
-				closest_node_index = -1
-				selected_node_index = -1
-				surface_handle.transform.origin = owner.cursor_3d.transform.origin
+				process_control()
 			else:
+				closest_split.node = -1
 				get_closest()
 				process_handle()
 
@@ -264,6 +292,50 @@ func get_closest():
 	is_over = closest_distance < 0.5
 	closest_node_index = closest
 
+func get_closest_split():
+	var cursor_position = owner.cursor_3d.transform.origin
+	var selected_node = self.selected_node
+	var closest = {"node": selected_node_index if selected_node_index != -1 and selected_node.links.size() > 0 else -1, "link": -1, "t": 0.5, "position": Vector3.ZERO}
+	if not is_instance_valid(selected_node):
+		is_over = false
+		return closest
+		
+	var closest_distance = 1 # Max range
+	
+	# Next Links
+	for i in range(selected_node.links.size()):
+		var link = selected_node.links[i]
+		var other_node = nodes[link]
+	
+		var t = clamp(MathTools.nearest_point_on_segment(selected_node.position, other_node.position, cursor_position), 0, 1)
+		var position = lerp(selected_node.position, other_node.position, t)
+		var distance = cursor_position.distance_to(position)
+		if distance < closest_distance:
+			closest_distance = distance
+			closest.link = i
+			closest.t = t
+			closest.position = position
+	
+	# Previous Links
+	for n in range(nodes.size()):
+		var node = nodes[n]
+		for i in range(node.links.size()):
+			var link = node.links[i]
+			if link != selected_node_index:
+				continue
+			
+			var t = clamp(MathTools.nearest_point_on_segment(node.position, selected_node.position, cursor_position), 0, 1)
+			var position = lerp(node.position, selected_node.position, t)
+			var distance = cursor_position.distance_to(position)
+			if distance < closest_distance:
+				closest_distance = distance
+				closest.node = n
+				closest.link = i
+				closest.t = t
+				closest.position = position
+		
+	closest_split = closest
+
 func process_handle():
 	if closest_node_index != -1:
 		var node = nodes[closest_node_index]
@@ -287,10 +359,10 @@ func process_handle():
 		surface_handle.color = Color(1,1,1)
 
 func process_control():
-	#get_closest_split()
-	#if closest_split.node != -1:
-	#	surface_handle.transform.origin = closest_split.position
-	#else:
+	get_closest_split()
+	if closest_split.node != -1:
+		surface_handle.transform.origin = closest_split.position
+	else:
 		surface_handle.transform.origin = owner.cursor_3d.transform.origin
 
 func select_node(node_index: int):
@@ -299,9 +371,8 @@ func select_node(node_index: int):
 	#		if link == selected_node_index:
 	#			break
 	#else:
-		selected_node_index = node_index
+	selected_node_index = node_index
 		#surface_handle.color = Color(1,1,1)
-
 
 func add_node(position: Vector3 = Vector3.ZERO):
 	var new_node = PositionNode.new()
