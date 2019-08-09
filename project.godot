@@ -68,8 +68,10 @@ _global_script_class_icons={
 
 [application]
 
-config/name="Revolt Editor"
+config/name="Make It Better"
 run/main_scene="res://Re-Volt Editor.tscn"
+boot_splash/image="res://icon.png"
+boot_splash/fullsize=false
 config/icon="res://icon.png"
 
 [input]
