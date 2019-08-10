@@ -1,14 +1,15 @@
-[gd_scene load_steps=14 format=2]
+[gd_scene load_steps=15 format=2]
 
 [ext_resource path="res://Scripts/Editor/Re-Volt Editor.gd" type="Script" id=1]
 [ext_resource path="res://Scripts/Editor/Camera Navigator.gd" type="Script" id=2]
 [ext_resource path="res://Scripts/Editor/Open File Panel.gd" type="Script" id=3]
 [ext_resource path="res://Scripts/Editor/File Menu Button.gd" type="Script" id=4]
 [ext_resource path="res://Scripts/Editor/View Button.gd" type="Script" id=5]
-[ext_resource path="res://Scripts/Editor/Open Track Folder Dialog.gd" type="Script" id=6]
-[ext_resource path="res://Scripts/Editor/Tool Panel.gd" type="Script" id=7]
-[ext_resource path="res://Handle.shader" type="Shader" id=8]
-[ext_resource path="res://Scripts/Editor/Origin.gd" type="Script" id=9]
+[ext_resource path="res://Help Button.gd" type="Script" id=6]
+[ext_resource path="res://Scripts/Editor/Open Track Folder Dialog.gd" type="Script" id=7]
+[ext_resource path="res://Scripts/Editor/Tool Panel.gd" type="Script" id=8]
+[ext_resource path="res://Handle.shader" type="Shader" id=9]
+[ext_resource path="res://Scripts/Editor/Origin.gd" type="Script" id=10]
 
 [sub_resource type="StreamTexture" id=1]
 flags = 4
@@ -25,7 +26,7 @@ atlas = SubResource( 1 )
 region = Rect2( 0, 64, 32, 32 )
 
 [sub_resource type="ShaderMaterial" id=4]
-shader = ExtResource( 8 )
+shader = ExtResource( 9 )
 shader_param/color = Plane( 1, 1, 1, 1 )
 shader_param/fade = 1.0
 shader_param/offset = 0.0
@@ -40,6 +41,7 @@ far = 1000.0
 script = ExtResource( 2 )
 
 [node name="UI" type="Control" parent="Camera"]
+editor/display_folded = true
 anchor_right = 1.0
 anchor_bottom = 1.0
 mouse_filter = 2
@@ -129,7 +131,6 @@ text = "[ Track Name ]"
 valign = 1
 
 [node name="Menu Bar" type="Panel" parent="Camera/UI"]
-editor/display_folded = true
 anchor_right = 1.0
 margin_bottom = 36.0
 
@@ -141,7 +142,7 @@ margin_top = 8.0
 margin_right = -8.0
 margin_bottom = -8.0
 
-[node name="Track File Button" type="MenuButton" parent="Camera/UI/Menu Bar/HBoxContainer"]
+[node name="Track Button" type="MenuButton" parent="Camera/UI/Menu Bar/HBoxContainer"]
 margin_right = 45.0
 margin_bottom = 20.0
 text = "Track"
@@ -156,6 +157,14 @@ margin_bottom = 20.0
 text = "View"
 switch_on_hover = true
 script = ExtResource( 5 )
+
+[node name="Help Button" type="MenuButton" parent="Camera/UI/Menu Bar/HBoxContainer"]
+margin_left = 95.0
+margin_right = 137.0
+margin_bottom = 20.0
+text = "Help"
+switch_on_hover = true
+script = ExtResource( 6 )
 
 [node name="FileDialog" type="FileDialog" parent="Camera/UI"]
 anchor_left = 0.5
@@ -174,10 +183,9 @@ access = 2
 current_dir = "D:/Udder Games/ReVolt/levels"
 current_file = "countryspeed"
 current_path = "D:/Udder Games/ReVolt/levels/countryspeed"
-script = ExtResource( 6 )
+script = ExtResource( 7 )
 
-[node name="PanelContainer" type="PanelContainer" parent="Camera/UI"]
-editor/display_folded = true
+[node name="Tool Panel" type="PanelContainer" parent="Camera/UI"]
 anchor_left = 0.497
 anchor_top = 1.0
 anchor_right = 0.497
@@ -187,34 +195,108 @@ margin_top = -66.0
 margin_right = 55.0
 margin_bottom = -8.0
 
-[node name="HBoxContainer" type="HBoxContainer" parent="Camera/UI/PanelContainer"]
+[node name="HBoxContainer" type="HBoxContainer" parent="Camera/UI/Tool Panel"]
 margin_left = 7.0
 margin_top = 7.0
 margin_right = 147.0
 margin_bottom = 51.0
 alignment = 1
-script = ExtResource( 7 )
+script = ExtResource( 8 )
 
-[node name="Pos Tool" type="ToolButton" parent="Camera/UI/PanelContainer/HBoxContainer"]
+[node name="Pos Tool" type="ToolButton" parent="Camera/UI/Tool Panel/HBoxContainer"]
 margin_right = 44.0
 margin_bottom = 44.0
 icon = SubResource( 2 )
 
-[node name="AI Tool" type="ToolButton" parent="Camera/UI/PanelContainer/HBoxContainer"]
+[node name="AI Tool" type="ToolButton" parent="Camera/UI/Tool Panel/HBoxContainer"]
 margin_left = 48.0
 margin_right = 92.0
 margin_bottom = 44.0
 icon = SubResource( 2 )
 
-[node name="Track Zone Tool" type="ToolButton" parent="Camera/UI/PanelContainer/HBoxContainer"]
+[node name="Track Zone Tool" type="ToolButton" parent="Camera/UI/Tool Panel/HBoxContainer"]
 margin_left = 96.0
 margin_right = 140.0
 margin_bottom = 44.0
 icon = SubResource( 3 )
 
+[node name="Controls Window" type="WindowDialog" parent="Camera/UI"]
+anchor_left = 0.5
+anchor_top = 0.5
+anchor_right = 0.5
+anchor_bottom = 0.5
+margin_left = -177.43
+margin_top = -46.5083
+margin_right = 174.57
+margin_bottom = 53.4917
+window_title = "Controls [WIP]"
+
+[node name="GridContainer" type="GridContainer" parent="Camera/UI/Controls Window"]
+anchor_right = 1.0
+anchor_bottom = 1.0
+margin_left = 16.0
+margin_top = 16.0
+margin_right = -16.0
+margin_bottom = -16.0
+columns = 2
+
+[node name="Control" type="Label" parent="Camera/UI/Controls Window/GridContainer"]
+margin_right = 55.0
+margin_bottom = 14.0
+size_flags_horizontal = 2
+text = "Mouse 1"
+
+[node name="Description" type="Label" parent="Camera/UI/Controls Window/GridContainer"]
+margin_left = 94.0
+margin_right = 320.0
+margin_bottom = 14.0
+text = "Select/Move Points"
+
+[node name="Control2" type="Label" parent="Camera/UI/Controls Window/GridContainer"]
+margin_top = 18.0
+margin_right = 55.0
+margin_bottom = 32.0
+size_flags_horizontal = 2
+text = "Mouse 2"
+
+[node name="Description2" type="Label" parent="Camera/UI/Controls Window/GridContainer"]
+margin_left = 94.0
+margin_top = 18.0
+margin_right = 320.0
+margin_bottom = 32.0
+text = "Link Points"
+
+[node name="Control3" type="Label" parent="Camera/UI/Controls Window/GridContainer"]
+margin_top = 36.0
+margin_right = 80.0
+margin_bottom = 50.0
+size_flags_horizontal = 2
+text = "Hold Control"
+
+[node name="Description3" type="Label" parent="Camera/UI/Controls Window/GridContainer"]
+margin_left = 94.0
+margin_top = 36.0
+margin_right = 320.0
+margin_bottom = 50.0
+text = "Create/Insert Points"
+
+[node name="Control4" type="Label" parent="Camera/UI/Controls Window/GridContainer"]
+margin_top = 54.0
+margin_right = 52.0
+margin_bottom = 68.0
+size_flags_horizontal = 2
+text = "Hold Alt"
+
+[node name="Description4" type="Label" parent="Camera/UI/Controls Window/GridContainer"]
+margin_left = 94.0
+margin_top = 54.0
+margin_right = 320.0
+margin_bottom = 68.0
+text = "Alternative Selection - Toggle Walls"
+
 [node name="Origin Axis" type="ImmediateGeometry" parent="."]
 material_override = SubResource( 4 )
-script = ExtResource( 9 )
+script = ExtResource( 10 )
 [connection signal="value_changed" from="Camera/UI/Speed Control/Speed Slider" to="Camera" method="_on_speed_slider_value_changed"]
 [connection signal="text_changed" from="Camera/UI/Open Track Window/Path Input" to="Camera/UI/Open Track Window" method="_on_Path_Input_text_changed"]
 [connection signal="pressed" from="Camera/UI/Open Track Window/Open Button" to="Camera/UI/Open Track Window" method="_on_Open_Button_pressed"]

@@ -279,6 +279,38 @@ func _process(delta):
 	imgeo.end()
 	imgeo_dashed.end()
 
+	imgeo.begin(Mesh.PRIMITIVE_TRIANGLES)
+	for i in range(segments.size()):
+		var segment = segments[i]
+		for link in segment.links:
+			var other_segment = segments[link]
+			
+			# Left
+			if segment.walls[0]:
+				imgeo.set_color(Color(1,0.5,0.75))
+				
+				imgeo.add_vertex(segment.left.position)
+				imgeo.add_vertex(segment.left.position + Vector3.UP)
+				imgeo.add_vertex(other_segment.left.position)
+				
+				imgeo.add_vertex(other_segment.left.position)
+				imgeo.add_vertex(segment.left.position + Vector3.UP)
+				imgeo.add_vertex(other_segment.left.position + Vector3.UP)
+
+			# Right
+			if segment.walls[1]:
+				imgeo.set_color(Color(0.5,1,0.75))
+				
+				imgeo.add_vertex(segment.right.position)
+				imgeo.add_vertex(other_segment.right.position)
+				imgeo.add_vertex(segment.right.position + Vector3.UP)
+				
+				imgeo.add_vertex(other_segment.right.position)
+				imgeo.add_vertex(other_segment.right.position + Vector3.UP)
+				imgeo.add_vertex(segment.right.position + Vector3.UP)
+				
+	imgeo.end()
+	
 	imgeo_dashed.begin(Mesh.PRIMITIVE_TRIANGLES)
 
 	var view_pos = owner.camera.transform.origin
@@ -345,6 +377,11 @@ func _unhandled_input(event):
 						closest_index.side = SIDE_RIGHT
 						add_segment(owner.cursor_3d.transform.origin)
 					preselected_index = closest_index.duplicate()
+				elif event.alt: # Toggle walls
+					if closest_index.segment != -1:
+						var segment = segments[closest_index.segment]
+						var i = 0 if closest_index.side == SIDE_LEFT else 1
+						segment.walls[i] = not segment.walls[i]
 				else:
 					if is_over:
 						preselected_index = closest_index.duplicate()

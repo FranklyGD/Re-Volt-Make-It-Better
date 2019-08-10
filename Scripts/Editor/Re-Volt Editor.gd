@@ -9,10 +9,12 @@ const POS_EXTENSION = "pan"
 const AI_EXTENSION = "fan"
 const TRACK_ZONE_EXTENSION = "taz"
 const TRACK_WORLD_EXTENSION = "w"
+const TRACK_INFO_EXTENSION = "inf"
 
 const path_pattern = "%s/%s.%s"
 var data_name : String
 
+var trackData : TrackInfo
 var trackWorldData : TrackWorld
 var positionData : Position
 var aiData : AI
@@ -61,11 +63,13 @@ func load_track(folder_path: String):
 	if not file.file_exists(track_world_path):
 		return
 	
-	OS.set_window_title("Revolt Track Editor: %s" % data_name) 
+	OS.set_window_title("Re-Volt - Make It Better: %s" % data_name) 
 	
 	# Clear area if the file is valid
 	if is_instance_valid(trackWorldData):
 		trackWorldData.queue_free()
+	if is_instance_valid(trackData):
+		trackData.queue_free()
 	if is_instance_valid(positionData):
 		positionData.queue_free()
 	if is_instance_valid(aiData):
@@ -75,6 +79,18 @@ func load_track(folder_path: String):
 	
 	trackWorldData = TrackWorld.new(folder_path)
 	add_child(trackWorldData)
+	
+	var info_path = path_pattern % [folder_path, data_name, TRACK_INFO_EXTENSION]
+	if file.file_exists(info_path):
+		trackData = TrackInfo.new(info_path)
+		add_child(trackData)
+		
+		if trackData.track_name:
+			OS.set_window_title("Re-Volt - Make It Better: %s" % trackData.track_name)
+		
+		camera.transform.origin = trackData.starting_position + Vector3.UP * 2
+		camera.transform.basis = Basis(Vector3.DOWN, trackData.starting_rotation)
+		camera.yaw = -trackData.starting_rotation
 	
 	var pos_path = path_pattern % [folder_path, data_name, POS_EXTENSION]
 	if file.file_exists(pos_path):
