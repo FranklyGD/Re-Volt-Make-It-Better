@@ -20,7 +20,7 @@ var positionData : Position
 var aiData : AI
 var trackZoneData : TrackZone
 
-#var undo = UndoRedo.new()
+var undo_redo = UndoRedo.new()
 
 onready var world_space = get_world().direct_space_state
 
@@ -51,6 +51,14 @@ func _ready():
 	
 	cursor_3d.end()
 
+func _unhandled_input(event):
+	if event.is_action_pressed("undo"):
+		undo_redo.undo()
+		get_tree().set_input_as_handled()
+	elif event.is_action_pressed("redo"):
+		undo_redo.redo()
+		get_tree().set_input_as_handled()
+
 func load_track(folder_path: String):
 	# Split track name from path
 	dir.open(folder_path)
@@ -76,6 +84,8 @@ func load_track(folder_path: String):
 		aiData.queue_free()
 	if is_instance_valid(trackZoneData):
 		trackZoneData.queue_free()
+	
+	undo_redo.clear_history()
 	
 	trackWorldData = TrackWorld.new(folder_path)
 	add_child(trackWorldData)

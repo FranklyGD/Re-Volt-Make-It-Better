@@ -198,8 +198,8 @@ func _unhandled_input(event):
 			get_closest()
 			process_handle()
 			
-		if self.preselected_node:
-			self.preselected_node.position = owner.cursor_3d.transform.origin
+		if preselected_node_index != -1 and event.button_mask & (BUTTON_LEFT | BUTTON_RIGHT):
+			do_move_node(preselected_node_index, owner.cursor_3d.transform.origin)
 		
 	if event is InputEventMouseButton: # Mouse Buttons
 		if event.button_index == BUTTON_LEFT:
@@ -207,32 +207,32 @@ func _unhandled_input(event):
 				if event.control: # Create a new node at 3D mouse position
 					preselected_node_index = nodes.size()
 					if closest_split.node != -1:
-						insert_node(closest_split.node, closest_split.link, closest_split.t)
+						do_insert_node(closest_split.node, closest_split.link, closest_split.t)
 					else:
-						add_node(owner.cursor_3d.transform.origin)
+						do_add_node(owner.cursor_3d.transform.origin)
 				else:
 					if is_over:
 						preselected_node_index = closest_node_index
 			else:
 				if closest_node_index == preselected_node_index :
-					select_node(closest_node_index)
+					do_select_node(closest_node_index)
 				preselected_node_index = -1
 
 		if event.button_index == BUTTON_RIGHT:
 			if event.pressed:
 				if event.control:
 					closest_node_index = nodes.size()
-					add_node(owner.cursor_3d.transform.origin)
+					do_add_node(owner.cursor_3d.transform.origin)
 				
 				preselected_node_index = closest_node_index
 				if preselected_node_index != -1:
 					get_tree().set_input_as_handled()
 			else:
 				if selected_node_index != -1 and preselected_node_index != -1 and preselected_node_index == closest_node_index:
-					change_link(selected_node_index, closest_node_index)
+					do_change_link(selected_node_index, closest_node_index)
 				
 				if (event.alt or event.control) and preselected_node_index != -1 and preselected_node_index == closest_node_index:
-					select_node(preselected_node_index)
+					do_select_node(preselected_node_index)
 				preselected_node_index = -1
 
 	if event is InputEventKey:
@@ -247,7 +247,7 @@ func _unhandled_input(event):
 
 		if event.scancode == KEY_DELETE: # Node deletion
 			if event.pressed:
-				remove_node(selected_node_index)
+				do_remove_node(selected_node_index)
 				get_closest()
 				process_handle()
 
@@ -336,6 +336,15 @@ func get_closest_split():
 		
 	closest_split = closest
 
+func get_previous(node_index) -> Array:
+	var prev = []
+	for s in range(nodes.size()):
+		var node = nodes[s]
+		for link in node.links:
+			if link == node_index:
+				prev.append(s)
+	return prev
+
 func process_handle():
 	if closest_node_index != -1:
 		var node = nodes[closest_node_index]
@@ -366,18 +375,41 @@ func process_control():
 		surface_handle.transform.origin = owner.cursor_3d.transform.origin
 
 func select_node(node_index: int):
-	#if Input.is_key_pressed(KEY_CONTROL):
-	#	for link in selected_node.links:
-	#		if link == selected_node_index:
-	#			break
-	#else:
 	selected_node_index = node_index
-		#surface_handle.color = Color(1,1,1)
 
-func add_node(position: Vector3 = Vector3.ZERO):
+func do_select_node(node_index: int):
+	owner.undo_redo.create_action("Select Node")
+	owner.undo_redo.add_do_method(self, "select_node", node_index)
+	owner.undo_redo.add_undo_method(self, "select_node", selected_node_index)
+	owner.undo_redo.commit_action()
+
+func move_node(node_index: int,  position: Vector3):
+	var node = nodes[node_index]
+	node.position = position
+
+func do_move_node(node_index: int, position: Vector3): # Currently a lossy method
+	owner.undo_redo.create_action("Move Node", UndoRedo.MERGE_ENDS)
+	owner.undo_redo.add_do_method(self, "move_node", node_index, position)
+	owner.undo_redo.add_undo_method(self, "move_node", node_index, position)
+	owner.undo_redo.commit_action()
+
+func add_node(position: Vector3 = Vector3.ZERO, i: int = -1):
 	var new_node = PositionNode.new()
 	new_node.position = position
-	nodes.append(new_node)
+	if i == -1:
+		nodes.append(new_node)
+	else:
+		for node in nodes:
+			for l in range(node.links.size()):
+				if node.links[l] >= i:
+					node.links[l] += 1;
+		nodes.insert(i, new_node)
+
+func do_add_node(position: Vector3 = Vector3.ZERO):
+	owner.undo_redo.create_action("Add Node")
+	owner.undo_redo.add_do_method(self, "add_node", position)
+	owner.undo_redo.add_undo_method(self, "remove_node", nodes.size())
+	owner.undo_redo.commit_action()
 
 func insert_node(node_index: int, link_index: int, t: float = 0.5):
 	var node = nodes[node_index]
@@ -391,18 +423,25 @@ func insert_node(node_index: int, link_index: int, t: float = 0.5):
 	node.links[link_index] = new_node_index
 	new_node.links.append(other_node_index)
 
+func do_insert_node(node_index: int, link_index: int, t: float = 0.5):
+	owner.undo_redo.create_action("Insert Node")
+	owner.undo_redo.add_do_method(self, "insert_node", node_index, link_index, t)
+	owner.undo_redo.add_undo_method(self, "remove_node", nodes.size())
+	owner.undo_redo.commit_action()
+
 func remove_node(node_index: int):
 	if node_index != INVALID_LINK and not self.selected_node:
 		return
 	
 	# Transfer links to the previous node
-	for node in nodes:
-		var links = node.links
+	for previous_node_index in get_previous(node_index):
+		var previous_node = nodes[previous_node_index]
+		var links = nodes[previous_node_index].links
 		for i in range(links.size()):
 			if node_index == links[i]:
 				links.remove(i)
 				var transfer_links = nodes[node_index].links
-				node.links += transfer_links
+				previous_node.links += transfer_links
 				break
 
 	nodes.remove(node_index)
@@ -416,6 +455,23 @@ func remove_node(node_index: int):
 	if selected_node_index == node_index:
 		selected_node_index = -1
 	closest_node_index = -1
+
+func do_remove_node(node_index: int):
+	owner.undo_redo.create_action("Remove Node")
+	owner.undo_redo.add_do_method(self, "remove_node", node_index)
+	owner.undo_redo.add_undo_method(self, "add_node", nodes[node_index].position, node_index)
+	
+	for link in nodes[node_index].links:
+		owner.undo_redo.add_undo_method(self, "change_link", node_index, link)
+	var previous_nodes = get_previous(node_index)
+	for	previous_node_index in previous_nodes:
+		owner.undo_redo.add_undo_method(self, "change_link", previous_node_index, node_index)
+		for prev_link in nodes[previous_node_index].links:
+			for link in nodes[node_index].links:
+				if prev_link != link:
+					owner.undo_redo.add_undo_method(self, "change_link", previous_node_index, link)
+	
+	owner.undo_redo.commit_action()
 
 func change_link(from: int, to: int):
 	# First pass remove link
@@ -435,6 +491,12 @@ func change_link(from: int, to: int):
 	
 	# Third pass add link
 	add_link(from, to)
+
+func do_change_link(from: int, to: int):
+	owner.undo_redo.create_action("Change Link")
+	owner.undo_redo.add_do_method(self, "change_link", from, to)
+	owner.undo_redo.add_undo_method(self, "change_link", from, to)
+	owner.undo_redo.commit_action()
 
 func add_link(from: int, to: int):
 	# Prevent accidentally linking to self

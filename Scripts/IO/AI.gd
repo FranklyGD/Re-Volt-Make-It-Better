@@ -354,16 +354,8 @@ func _unhandled_input(event):
 			get_closest()
 			process_handle()
 			
-		if preselected_index.segment != -1:
-			var segment = segments[preselected_index.segment]
-			if preselected_index.side == SIDE_RACING:
-				segment.racing_line = clamp(MathTools.nearest_point_on_segment(segment.left.position, segment.right.position, owner.cursor_3d.transform.origin), 0.001, 0.999)
-			elif preselected_index.side == SIDE_OVERTAKING:
-				segment.overtaking_line = clamp(MathTools.nearest_point_on_segment(segment.left.position, segment.right.position, owner.cursor_3d.transform.origin), 0.001, 0.999)
-			else:
-				if event.button_mask & (BUTTON_LEFT | BUTTON_RIGHT):
-					var node = segment.left if preselected_index.side == SIDE_LEFT else segment.right
-					node.position = owner.cursor_3d.transform.origin
+		if preselected_index.segment != -1 and event.button_mask & (BUTTON_LEFT | BUTTON_RIGHT):
+			do_move_node(preselected_index.segment, preselected_index.side, owner.cursor_3d.transform.origin)
 		
 	if event is InputEventMouseButton: # Mouse Buttons
 		if event.button_index == BUTTON_LEFT:
@@ -372,22 +364,19 @@ func _unhandled_input(event):
 					closest_index.segment = segments.size() 
 					if closest_split.segment != -1:
 						closest_index.side = closest_split.side
-						insert_segment(closest_split.segment, closest_split.link, closest_split.t)
+						do_insert_segment(closest_split.segment, closest_split.link, closest_split.t)
 					else:
 						closest_index.side = SIDE_RIGHT
-						add_segment(owner.cursor_3d.transform.origin)
+						do_add_segment(owner.cursor_3d.transform.origin)
 					preselected_index = closest_index.duplicate()
 				elif event.alt: # Toggle walls
-					if closest_index.segment != -1:
-						var segment = segments[closest_index.segment]
-						var i = 0 if closest_index.side == SIDE_LEFT else 1
-						segment.walls[i] = not segment.walls[i]
+					do_toggle_wall(closest_index.segment, closest_index.side)
 				else:
 					if is_over:
 						preselected_index = closest_index.duplicate()
 			else:
 				if closest_index.segment == preselected_index.segment:
-					select_node(preselected_index.segment, preselected_index.side)
+					do_select_node(preselected_index.segment, preselected_index.side)
 				preselected_index.segment = -1
 
 		if event.button_index == BUTTON_RIGHT:
@@ -395,17 +384,17 @@ func _unhandled_input(event):
 				if event.control:
 					closest_index.segment = segments.size() 
 					closest_index.side = SIDE_RIGHT
-					add_segment(owner.cursor_3d.transform.origin)
+					do_add_segment(owner.cursor_3d.transform.origin)
 
 				preselected_index = closest_index.duplicate()
 				if preselected_index.segment != -1:
 					get_tree().set_input_as_handled()
 			else:
 				if selected_index.segment != -1 and get_segment_unpressed():
-					change_link(selected_index.segment, preselected_index.segment)
+					do_change_link(selected_index.segment, preselected_index.segment)
 				
 				if (event.alt or event.control) and get_side_unpressed():
-					select_node(preselected_index.segment, preselected_index.side)
+					do_select_node(preselected_index.segment, preselected_index.side)
 				preselected_index.segment = -1
 
 	if event is InputEventKey:
@@ -424,7 +413,7 @@ func _unhandled_input(event):
 
 		if event.scancode == KEY_DELETE: # Node deletion
 			if event.pressed:
-				remove_segment(selected_index.segment)
+				do_remove_segment(selected_index.segment)
 				get_closest()
 				process_handle()
 
@@ -582,6 +571,14 @@ func process_highlight():
 		imgeo.set_color(Color.gray)
 		DrawingTools.dashed_line(imgeo, lerp(segment.left.position, other_segment.left.position, closest_split.t), lerp(segment.right.position, other_segment.right.position, closest_split.t), 2)
 
+func get_previous(segment_index) -> Array:
+	var prev = []
+	for s in range(segments.size()):
+		var segment = segments[s]
+		for link in segment.links:
+			if link == segment_index:
+				prev.append(s)
+	return prev
 
 func process_handle():
 	if closest_index.segment != -1 and closest_index.side != -1:
@@ -626,11 +623,46 @@ func select_node(segment_index: int, side: int):
 	selected_index.segment = segment_index
 	selected_index.side = side
 
-func add_segment(position: Vector3 = Vector3.ZERO):
+func do_select_node(segment_index: int, side: int):
+	owner.undo_redo.create_action("Select Segment")
+	owner.undo_redo.add_do_method(self, "select_node", segment_index, side)
+	owner.undo_redo.add_undo_method(self, "select_node", selected_index.segment, selected_index.side)
+	owner.undo_redo.commit_action()
+
+func move_node(segment_index: int, side: int, position: Vector3):
+	var segment = segments[segment_index]
+	if side == SIDE_RACING:
+		segment.racing_line = clamp(MathTools.nearest_point_on_segment(segment.left.position, segment.right.position, position), 0.001, 0.999)
+	elif side == SIDE_OVERTAKING:
+		segment.overtaking_line = clamp(MathTools.nearest_point_on_segment(segment.left.position, segment.right.position, position), 0.001, 0.999)
+	else:
+		var node = segment.left if side == SIDE_LEFT else segment.right
+		node.position = position
+
+func do_move_node(segment_index: int, side: int, position: Vector3): # Currently a lossy method
+	owner.undo_redo.create_action("Move Segment", UndoRedo.MERGE_ENDS)
+	owner.undo_redo.add_do_method(self, "move_node", segment_index, side, position)
+	owner.undo_redo.add_undo_method(self, "move_node", segment_index, side, position)
+	owner.undo_redo.commit_action()
+
+func add_segment(position: Vector3 = Vector3.ZERO, i: int = -1):
 	var new_segment = AISegment.new()
 	new_segment.left.position = position
 	new_segment.right.position = position
-	segments.append(new_segment)
+	if i == -1:
+		segments.append(new_segment)
+	else:
+		for segment in segments:
+			for l in range(segment.links.size()):
+				if segment.links[l] >= i:
+					segment.links[l] += 1;
+		segments.insert(i, new_segment)
+
+func do_add_segment(position: Vector3 = Vector3.ZERO):
+	owner.undo_redo.create_action("Add Segment")
+	owner.undo_redo.add_do_method(self, "add_segment", position)
+	owner.undo_redo.add_undo_method(self, "remove_segment", segments.size())
+	owner.undo_redo.commit_action()
 
 func insert_segment(segment_index: int, link_index: int, t: float = 0.5):
 	var segment = segments[segment_index]
@@ -649,19 +681,26 @@ func insert_segment(segment_index: int, link_index: int, t: float = 0.5):
 	new_segment.racing_line = lerp(segment.racing_line, other_segment.racing_line, t)
 	new_segment.overtaking_line = lerp(segment.overtaking_line, other_segment.overtaking_line, t)
 	new_segment.walls = segment.walls.duplicate()
+	
+func do_insert_segment(segment_index: int, link_index: int, t: float = 0.5):
+	owner.undo_redo.create_action("Insert Segment")
+	owner.undo_redo.add_do_method(self, "insert_segment", segment_index, link_index, t)
+	owner.undo_redo.add_undo_method(self, "remove_segment", segments.size())
+	owner.undo_redo.commit_action()
 
 func remove_segment(segment_index: int):
 	if segment_index != INVALID_LINK and not self.selected_segment:
 		return
 	
 	# Transfer links to the previous segment
-	for segment in segments:
-		var links = segment.links
+	for previous_segment_index in get_previous(segment_index):
+		var previous_segment = segments[previous_segment_index]
+		var links = previous_segment.links
 		for i in range(links.size()):
 			if segment_index == links[i]:
 				links.remove(i)
 				var transfer_links = segments[segment_index].links
-				segment.links += transfer_links
+				previous_segment.links += transfer_links
 				break
 
 	segments.remove(segment_index)
@@ -675,6 +714,23 @@ func remove_segment(segment_index: int):
 	if selected_index.segment == segment_index:
 		selected_index.segment = -1
 	closest_index.segment = -1
+
+func do_remove_segment(segment_index: int):
+	owner.undo_redo.create_action("Remove Segment")
+	owner.undo_redo.add_do_method(self, "remove_segment", segment_index)
+	owner.undo_redo.add_undo_method(self, "add_segment", segments[segment_index].left.position, segment_index)
+	
+	for link in segments[segment_index].links:
+		owner.undo_redo.add_undo_method(self, "change_link", segment_index, link)
+	var previous_segments = get_previous(segment_index)
+	for	previous_segment_index in previous_segments:
+		owner.undo_redo.add_undo_method(self, "change_link", previous_segment_index, segment_index)
+		for prev_link in segments[previous_segment_index].links:
+			for link in segments[segment_index].links:
+				if prev_link != link:
+					owner.undo_redo.add_undo_method(self, "change_link", previous_segment_index, link)
+	
+	owner.undo_redo.commit_action()
 
 func change_link(from: int, to: int):
 	# First pass remove link
@@ -695,6 +751,12 @@ func change_link(from: int, to: int):
 	# Third pass add link
 	add_link(from, to)
 
+func do_change_link(from: int, to: int):
+	owner.undo_redo.create_action("Change Link")
+	owner.undo_redo.add_do_method(self, "change_link", from, to)
+	owner.undo_redo.add_undo_method(self, "change_link", from, to)
+	owner.undo_redo.commit_action()
+
 func add_link(from: int, to: int):
 	# Prevent accidentally linking to self
 	if from == to:
@@ -711,3 +773,15 @@ func remove_link(from: int, to: int):
 		if links[i] == to:
 			links.remove(i)
 			break
+
+func toggle_wall(segment_index: int, side: int):
+	if segment_index != -1:
+		var segment = segments[segment_index]
+		var i = 0 if side == SIDE_LEFT else 1
+		segment.walls[i] = not segment.walls[i]
+
+func do_toggle_wall(segment_index: int, side: int):
+	owner.undo_redo.create_action("Toggle Wall")
+	owner.undo_redo.add_do_method(self, "toggle_wall", segment_index, side)
+	owner.undo_redo.add_undo_method(self, "toggle_wall", segment_index, side)
+	owner.undo_redo.commit_action()
