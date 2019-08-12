@@ -69,7 +69,7 @@ func process_3d_cursor(position: Vector2):
 	while distance > 0:
 		var to = from + ray * distance
 		
-		var result = owner.world_space.intersect_ray(from, to, owner.trackZoneData.zones if owner.trackZoneData else [])
+		var result = owner.world_space.intersect_ray(from, to, owner.trackZoneData.zones if owner.trackZoneData and not (owner.trackZoneData.editable and owner.trackZoneData.viewable) else [])
 		if result.size() > 0:
 			if result.normal.dot(ray) > 0: # Re-cast if this is a back face
 				distance -= result.normal.distance_to(result.position)

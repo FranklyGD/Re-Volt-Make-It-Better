@@ -12,7 +12,7 @@ var solid_material = load("res://Handle Obstructed.material").duplicate()
 
 var is_zone_blocking setget _set_blocking
 func _set_blocking(value: bool):
-	box_shape.disabled = not value
+	box_shape.disabled = not value # This does not work for some reason
 
 func _init():
 	outline_material.set_shader_param("fade", 20)
@@ -24,6 +24,7 @@ func _init():
 	box.material = solid_material
 	
 	box_shape.shape = BoxShape.new()
+	box_shape.disabled = true
 
 func _ready():
 	add_child(imgeo)

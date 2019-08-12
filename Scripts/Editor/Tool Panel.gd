@@ -13,8 +13,6 @@ func _ready():
 	ai_tool.connect("pressed", self, "edit_ai")
 	tz_tool.connect("pressed", self, "edit_tz")
 	
-	tz_tool.disabled = true # Zone editing is not supported yet
-	
 func edit_none():
 	if not owner.data_name:
 		return

@@ -138,4 +138,4 @@ func save_ai():
 	save_data(aiData, AI_EXTENSION)
 
 func save_tz():
-	pass#save_data(trackZoneData, TRACK_ZONE_EXTENSION)
+	save_data(trackZoneData, TRACK_ZONE_EXTENSION)
